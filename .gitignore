@@ -1,3 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python/
+env/
+venv/
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# IDEs
+.idea/
+.vscode/
+
+# Logs
+logs/*.log
+
+# Streamlit
+.streamlit/
+
+# Flet
+*.flet
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

@@ -1,0 +1,31 @@
+# flet.yml - Arquivo de configuração para o build do aplicativo
+
+# Informações básicas do projeto
+project: krav-maga-analyzer
+version: 1.15.0  # Incremente a versão a cada novo build
+description: Um aplicativo de desktop e móvel para análise e aprimoramento de técnicas de Krav Maga.
+
+# Ponto de entrada da sua aplicação
+entry_point: main.py
+
+# Dependências Python (o Flet lerá o seu requirements.txt)
+# Certifique-se de que seu requirements.txt está atualizado.
+
+# Configurações específicas para o build Android (APK)
+apk:
+  # Nome do pacote - deve ser único, como um domínio invertido
+  package_name: com.kravmaga.analyzer
+
+  # Nome do aplicativo que aparecerá no celular
+  app_name: Krav Maga Analyzer
+
+  # Ícone do aplicativo (opcional, mas recomendado)
+  # Crie um ícone de 512x512 pixels e salve como `assets/icon.png`
+  icon: /icon.png
+
+  # Permissões que o aplicativo precisa no Android
+  permissions:
+    - android.permission.INTERNET  # Necessário para Flet funcionar
+
+  # Versão do seu aplicativo (para a Google Play Store)
+  build_number: 1
