@@ -10,6 +10,7 @@ venv/
 *.egg-info/
 .pytest_cache/
 
+
 # IDEs
 .idea/
 .vscode/
