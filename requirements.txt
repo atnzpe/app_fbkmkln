@@ -1,34 +1,23 @@
+# requirements.txt
+
+# --- Core Framework ---
 flet
-matplotlib
-logging
-streamlit
-pytest
+
+# --- Análise de Imagem e Computação Científica ---
 opencv-python
 mediapipe
 numpy
+scikit-learn
+
+# --- Geração de Relatórios e Gráficos ---
+fpdf2
+matplotlib
+
+# --- Leitura de Dados (Planilha Excel/CSV) ---
+pandas
+openpyxl
+
+# --- Ferramentas de Teste ---
+pytest
 pytest-mock
 pytest-asyncio
-fpdf2
-albumentations
-flet
-opencv-python
-mediapipe
-numpy
-scikit-learn
-fpdf2
-
-
-
-
-Requests
-scipy
-seaborn
-setuptools
-streamlit
-flet
-opencv-python
-mediapipe
-numpy
-scikit-learn
-fpdf2
-plotly
