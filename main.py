@@ -2,12 +2,12 @@
 
 import flet as ft
 import logging
-
+import sys
 try:
     from src.auth import AuthService
     from src.utils import setup_logging
 except ImportError:
-    import sys
+    
     import os
 
     sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -29,15 +29,15 @@ class AppFBKMKLN:
         logger.debug("Inicializando a classe AppFBKMKLN.")
         self.page = page
         self.auth_service = AuthService(sheet_url=SHEET_URL)
-
         self.setup_page_and_routes()
-        self.page.go("/")  # Navega para a rota inicial (login)
+        self.page.go("/")
 
     def setup_page_and_routes(self):
         """Configura as propriedades globais da página e o sistema de rotas."""
         logger.debug("Configurando propriedades da página Flet e rotas.")
         self.page.title = "FBKMKLN - Leão do Norte"
         self.page.theme_mode = ft.ThemeMode.DARK
+        self.page.bgcolor = ft.Colors.BLACK
         self.page.on_route_change = self.on_route_change
         self.page.on_view_pop = self.on_view_pop
 
@@ -46,39 +46,32 @@ class AppFBKMKLN:
         logger.info(f"Navegando para a rota: {self.page.route}")
         self.page.views.clear()
 
-        # Rota de Login
         if self.page.route == "/":
             self.page.views.append(self.create_login_view())
-
-        # Rota do Dashboard (requer dados do usuário)
         elif self.page.route == "/dashboard" and self.page.client_storage.contains_key(
             "user_data"
         ):
             user_data = self.page.client_storage.get("user_data")
             self.page.views.append(self.create_dashboard_view(user=user_data))
-
-        # Se a rota do dashboard for acessada sem login, redireciona para o login
         else:
             self.page.views.append(self.create_login_view())
 
         self.page.update()
 
     def on_view_pop(self, view):
-        """Função chamada quando o usuário volta uma tela (não usada aqui, mas boa prática)."""
+        """Função chamada quando o usuário volta uma tela."""
         self.page.views.pop()
         top_view = self.page.views[-1]
         self.page.go(top_view.route)
 
     def login(self, e):
-        """Valida as credenciais e navega para o dashboard em caso de sucesso."""
+        """Valida as credenciais e navega para o dashboard."""
         cpf = self.cpf_field.value
         senha = self.password_field.value
         logger.info(f"Tentativa de login para o CPF: {cpf}")
-
         user_data = self.auth_service.login(cpf, senha)
 
         if user_data:
-            # Armazena os dados do usuário no armazenamento da sessão para recuperá-los na rota
             self.page.client_storage.set("user_data", user_data)
             self.page.go("/dashboard")
         else:
@@ -96,7 +89,7 @@ class AppFBKMKLN:
         self.auth_service.load_users()
 
         logo = ft.Image(
-            src="/icon.jpg",  # Usando o logo que você forneceu
+            src="/icon.jpg",
             width=150,
             height=150,
             fit=ft.ImageFit.CONTAIN,
@@ -115,6 +108,13 @@ class AppFBKMKLN:
         self.login_status = ft.Text(value="", color=ft.Colors.RED_ACCENT)
         login_button = ft.ElevatedButton(text="Entrar", width=300, on_click=self.login)
 
+        # **CORREÇÃO APLICADA:** O método correto para fechar a janela é `window_destroy()`.
+        exit_button = ft.OutlinedButton(
+            text="Encerrar Aplicativo",
+            width=300,
+            on_click=lambda _: self.page.window.destroy(),
+        )
+
         return ft.View(
             "/",
             [
@@ -126,6 +126,7 @@ class AppFBKMKLN:
                         self.password_field,
                         self.login_status,
                         login_button,
+                        exit_button,
                     ],
                     alignment=ft.MainAxisAlignment.CENTER,
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -141,34 +142,28 @@ class AppFBKMKLN:
     def create_dashboard_view(self, user: dict) -> ft.View:
         """Cria e retorna a View (página) do Dashboard."""
         user_name = user.get("NOME", "Usuário").split(" ")[0]
+        logger.info(f"Exibindo dashboard para o usuário: {user_name}")
 
-        welcome_message = ft.Text(
-            f"Seja bem-vindo, {user_name}!",
-            size=24,
-            weight=ft.FontWeight.BOLD,
-            text_align=ft.TextAlign.CENTER,
+        logo_header = ft.Image(
+            src="/icon.jpg", width=120, height=120, border_radius=ft.border_radius.all(40)
         )
+        welcome_message = ft.Text(
+            f"Kidá (קידה),{user_name}!", size=24, weight=ft.FontWeight.BOLD
+        )
+
+        header_content = ft.Column(
+            [logo_header, welcome_message],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=10,
+        )
+
         btn_logout = ft.IconButton(
             icon=ft.Icons.LOGOUT, on_click=self.logout, tooltip="Sair"
         )
 
-        header = ft.Row(
-            [
-                ft.Container(
-                    content=welcome_message,
-                    expand=True,
-                    alignment=ft.alignment.center_left,
-                ),
-                btn_logout,
-            ],
-            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-        )
+        header_row = ft.Row([ft.Container(expand=True), btn_logout])
 
-        # Estilo customizado para os botões do dashboard
-        button_style = ft.ButtonStyle(
-            color=ft.Colors.WHITE,  # Cor da fonte
-            bgcolor=ft.Colors.WHITE24,  # Cor de fundo (cinza claro transparente)
-        )
+        button_style = ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=ft.Colors.WHITE24)
 
         btn_programa = ft.ElevatedButton(
             "Programa Técnico",
@@ -225,7 +220,8 @@ class AppFBKMKLN:
             [
                 ft.Column(
                     [
-                        header,
+                        header_row,
+                        header_content,
                         ft.Divider(height=20, color=ft.Colors.WHITE24),
                         dashboard_buttons,
                     ],
