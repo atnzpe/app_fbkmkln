@@ -141,14 +141,14 @@ class AppFBKMKLN:
 
     def create_dashboard_view(self, user: dict) -> ft.View:
         """Cria e retorna a View (página) do Dashboard."""
-        user_name = user.get("NOME", "Usuário").split(" ")[0]
-        logger.info(f"Exibindo dashboard para o usuário: {user_name}")
+        user_login_name = user.get("LOGIN", "Usuário").split(" ")[0]
+        logger.info(f"Exibindo dashboard para o usuário: {user_login_name}")
 
         logo_header = ft.Image(
             src="/icon.jpg", width=120, height=120, border_radius=ft.border_radius.all(40)
         )
         welcome_message = ft.Text(
-            f"Kidá (קידה),{user_name}!", size=24, weight=ft.FontWeight.BOLD
+            f"Kidá (קידה),{user_login_name}!", size=24, weight=ft.FontWeight.BOLD
         )
 
         header_content = ft.Column(
