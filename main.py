@@ -104,7 +104,7 @@ class AppFBKMKLN:
 
         text_field_style = {
             "label_style": ft.TextStyle(color=ft.Colors.WHITE),
-            "border_color": ft.colors.with_opacity(0.5, ft.Colors.WHITE),
+            "border_color": ft.Colors.with_opacity(0.5, ft.Colors.WHITE),
             "width": 300,
         }
 
