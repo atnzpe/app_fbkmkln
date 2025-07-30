@@ -1,3 +1,4 @@
+
 # App da Federação Brasileira de Krav Maga e Kapap - Leão do Norte
 
 ![Logo da Federação](assets/icon.jpg)
@@ -8,19 +9,31 @@ O App da Federação Leão do Norte é uma plataforma digital exclusiva para alu
 
 A aplicação utiliza uma interface moderna e responsiva construída com [Flet](https://flet.dev/), permitindo seu uso em desktops e dispositivos móveis.
 
-**Versão Atual:** 0.1.0
+**Versão Atual:** 0.2.0
 
 ---
 
-## Funcionalidades Planejadas
+## Roadmap de Desenvolvimento
 
--   **Login Seguro:** Autenticação de usuários (alunos e instrutores) via CPF e Senha.
--   **Acesso por Graduação:** Liberação de conteúdo (vídeos e documentos) de acordo com a faixa do aluno, permitindo o acesso à sua graduação atual e à próxima.
--   **Biblioteca de Vídeos:** Acesso a uma videoteca completa com todas as técnicas do programa, organizadas por faixa.
--   **Programa Técnico Digital:** Visualização do programa técnico oficial em PDF diretamente no aplicativo.
--   **Analisador de Movimentos:** Uma ferramenta integrada (Projeto 1) que utiliza Visão Computacional para comparar a execução de um movimento pelo aluno com um vídeo de referência do mestre.
--   **Plataforma de Cursos (Futuro):** Módulo para acesso a cursos e conteúdos exclusivos para assinantes.
--   **Mídias Sociais:** Acesso rápido às redes sociais oficiais da Federação.
+Este roadmap destaca o progresso do projeto e os próximos passos planejados, oferecendo uma visão clara da evolução do produto.
+
+### ✔️ **Fase 1: Fundação e MVP (Concluído)**
+-   [x] **Estrutura do Projeto:** Arquitetura modular com separação de responsabilidades (`src`, `assets`, `tests`).
+-   [x] **Interface Inicial:** Criação das telas de Login e Dashboard com Flet.
+-   [x] **Autenticação Real:** Implementação de um sistema de login seguro que valida usuários a partir de uma planilha do Google Sheets.
+-   [x] **UI/UX Refinada:** Design responsivo, com foco em acessibilidade e legibilidade para todos os públicos.
+
+### ⏳ **Fase 2: Liberação de Conteúdo e Ferramentas (Em Andamento)**
+-   [ ] **Controle de Acesso por Graduação:** Implementar a lógica para exibir conteúdo (PDFs e Vídeos) com base na faixa do aluno (faixa atual + próxima).
+-   [ ] **Visualizador de PDF:** Criar a tela "Programa Técnico" que exibe os PDFs das faixas liberadas.
+-   [ ] **Player de Vídeo:** Criar a tela "Vídeos de Movimentos" que exibe os vídeos das técnicas liberadas.
+-   [ ] **Integração do Analisador:** Migrar e adaptar o "Analisador de Movimentos" (Projeto 1) para dentro do App da Federação.
+
+### 🚀 **Fase 3: Expansão e Ecossistema (Futuro)**
+-   [ ] **Módulo de Cursos:** Desenvolver a funcionalidade de cursos para assinantes.
+-   [ ] **Gamificação:** Introduzir elementos de gamificação para acompanhar o progresso e engajar os alunos.
+-   [ ] **Área do Instrutor:** Criar um painel para instrutores gerenciarem seus alunos e turmas.
+-   [ ] **Migração para Banco de Dados:** Substituir a planilha por um banco de dados robusto (ex: Firebase, Supabase) para escalar a aplicação.
 
 ---
 
@@ -68,6 +81,8 @@ Siga os passos abaixo para configurar o ambiente de desenvolvimento.
     ```bash
     flet run main.py
     ```
+---
+
 ## Estrutura do Projeto
 
 

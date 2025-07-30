@@ -148,7 +148,7 @@ class AppFBKMKLN:
             src="/icon.jpg", width=120, height=120, border_radius=ft.border_radius.all(40)
         )
         welcome_message = ft.Text(
-            f"Kidá (קידה),{user_login_name}!", size=24, weight=ft.FontWeight.BOLD
+            f"Kidá (קידה), {user_login_name}!", size=24, weight=ft.FontWeight.BOLD
         )
 
         header_content = ft.Column(
