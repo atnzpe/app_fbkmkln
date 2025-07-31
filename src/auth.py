@@ -18,7 +18,6 @@ class AuthService:
         self.load_users()
 
     def load_users(self):
-        # ... (código existente inalterado) ...
         try:
             logger.info(f"Recarregando dados dos usuários de: {self.sheet_url}")
             self.user_data = pd.read_csv(self.sheet_url, dtype={"CPF": str})
@@ -31,7 +30,6 @@ class AuthService:
             self.user_data = pd.DataFrame()
 
     def login(self, cpf: str, senha: str) -> dict | None:
-        # ... (código existente inalterado) ...
         if self.user_data is None or self.user_data.empty:
             logger.error("Tentativa de login sem dados de usuários carregados.")
             return None
@@ -54,14 +52,14 @@ class AuthService:
         user_rank = user_data.get("GRADUACAO_ATUAL")
         logger.debug(f"Calculando permissões para a faixa: '{user_rank}'.")
 
-        # **REGRA ATUALIZADA:** Se a graduação do usuário for "PRETA", concede acesso total.
+        # **CORREÇÃO APLICADA:** A verificação da faixa "PRETA" agora é a primeira.
+        # Se o usuário for PRETA, a função retorna a lista completa e encerra.
         if user_rank == "PRETA":
             logger.info(
                 f"Usuário 'PRETA' (Mestre) detectado. Concedendo acesso a todas as {len(RANK_HIERARCHY)} faixas."
             )
             return RANK_HIERARCHY
 
-        # Verifica se a faixa do usuário é válida.
         if user_rank not in RANK_HIERARCHY:
             logger.warning(
                 f"A faixa '{user_rank}' do usuário não foi encontrada na hierarquia. Acesso negado."
@@ -69,7 +67,6 @@ class AuthService:
             return []
 
         try:
-            # Lógica existente para alunos
             current_rank_index = RANK_HIERARCHY.index(user_rank)
             highest_accessible_index = min(
                 current_rank_index + 1, len(RANK_HIERARCHY) - 1
