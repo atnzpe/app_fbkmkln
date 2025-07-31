@@ -262,6 +262,7 @@ class AppFBKMKLN:
             padding=20,
         )
 
+
     def create_program_view(self, user: dict) -> ft.View:
         """Cria e retorna a View que lista os PDFs de programa técnico acessíveis."""
         logger.info(
