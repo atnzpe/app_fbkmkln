@@ -2,8 +2,6 @@
 
 import pandas as pd
 import logging
-
-# Importa a nossa lista de hierarquia de faixas do arquivo de configuração.
 from src.config import RANK_HIERARCHY
 
 logger = logging.getLogger(__name__)
@@ -20,6 +18,7 @@ class AuthService:
         self.load_users()
 
     def load_users(self):
+        # ... (código existente inalterado) ...
         try:
             logger.info(f"Recarregando dados dos usuários de: {self.sheet_url}")
             self.user_data = pd.read_csv(self.sheet_url, dtype={"CPF": str})
@@ -32,6 +31,7 @@ class AuthService:
             self.user_data = pd.DataFrame()
 
     def login(self, cpf: str, senha: str) -> dict | None:
+        # ... (código existente inalterado) ...
         if self.user_data is None or self.user_data.empty:
             logger.error("Tentativa de login sem dados de usuários carregados.")
             return None
@@ -47,13 +47,21 @@ class AuthService:
 
     def get_accessible_ranks(self, user_data: dict) -> list[str]:
         """
-        Determina quais graduações um usuário pode acessar com base na sua faixa atual,
-        seguindo a regra de "todas as anteriores + a atual + a próxima".
+        Determina quais graduações um usuário pode acessar.
+        - Se a faixa for "PRETA", libera todas.
+        - Para as outras faixas, libera "todas as anteriores + a atual + a próxima".
         """
         user_rank = user_data.get("GRADUACAO_ATUAL")
         logger.debug(f"Calculando permissões para a faixa: '{user_rank}'.")
 
-        # Verifica se a faixa do usuário é válida e existe na nossa hierarquia.
+        # **REGRA ATUALIZADA:** Se a graduação do usuário for "PRETA", concede acesso total.
+        if user_rank == "PRETA":
+            logger.info(
+                f"Usuário 'PRETA' (Mestre) detectado. Concedendo acesso a todas as {len(RANK_HIERARCHY)} faixas."
+            )
+            return RANK_HIERARCHY
+
+        # Verifica se a faixa do usuário é válida.
         if user_rank not in RANK_HIERARCHY:
             logger.warning(
                 f"A faixa '{user_rank}' do usuário não foi encontrada na hierarquia. Acesso negado."
@@ -61,17 +69,11 @@ class AuthService:
             return []
 
         try:
-            # Encontra o índice (nível) da faixa atual do usuário na lista de hierarquia.
+            # Lógica existente para alunos
             current_rank_index = RANK_HIERARCHY.index(user_rank)
-
-            # Define o índice da faixa mais alta que ele pode ver (a próxima).
-            # O `min` garante que não tentemos acessar um índice que não existe.
             highest_accessible_index = min(
                 current_rank_index + 1, len(RANK_HIERARCHY) - 1
             )
-
-            # Cria a lista de faixas acessíveis, pegando uma "fatia" da hierarquia
-            # desde o início (índice 0) até a próxima graduação.
             accessible_ranks = RANK_HIERARCHY[: highest_accessible_index + 1]
 
             logger.info(
@@ -82,5 +84,4 @@ class AuthService:
             logger.error(
                 f"Erro ao determinar faixas acessíveis para '{user_rank}': {e}"
             )
-            # Em caso de erro, retorna uma lista vazia por segurança.
             return []
