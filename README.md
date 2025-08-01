@@ -23,10 +23,11 @@ Este roadmap destaca o progresso do projeto e os próximos passos planejados, of
 -   [x] **UI/UX Refinada:** Design responsivo, com foco em acessibilidade e legibilidade para todos os públicos.
 
 ### ⏳ **Fase 2: Liberação de Conteúdo e Ferramentas (Em Andamento)**
--   [x] **Controle de Acesso por Graduação:** Implementar a lógica para exibir conteúdo com base na hierarquia de faixas (faixas anteriores + atual + próxima).
--   [ ] **Visualizador de PDF:** Criar a tela "Programa Técnico" que exibe os PDFs das faixas liberadas para o aluno.
--   [ ] **Player de Vídeo:** Criar a tela "Vídeos de Movimentos" que exibe os vídeos das técnicas liberadas.
+-   [x] **Controle de Acesso por Graduação:** Lógica para acesso hierárquico implementada.
+-   [x] **Visualizador de PDF:** Tela "Programa Técnico" exibe os PDFs das faixas liberadas.
+-   [x] **Player de Vídeo:** Tela "Vídeos de Movimentos" exibe os vídeos das técnicas liberadas.
 -   [ ] **Integração do Analisador:** Migrar e adaptar o "Analisador de Movimentos" (Projeto 1) para dentro do App da Federação.
+...
 
 ### 🚀 **Fase 3: Expansão e Ecossistema (Futuro)**
 -   [ ] **Módulo de Cursos:** Desenvolver a funcionalidade de cursos para assinantes.

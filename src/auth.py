@@ -1,7 +1,7 @@
 # src/auth.py
-
-import pandas as pd
 import logging
+import pandas as pd
+
 from src.config import RANK_HIERARCHY
 
 logger = logging.getLogger(__name__)

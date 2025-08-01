@@ -9,11 +9,13 @@ try:
     # Tenta importar os módulos da estrutura 'src'
     from src.auth import AuthService
     from src.utils import setup_logging
+    from src.config import RANK_HIERARCHY
 except ImportError:
     # Se falhar (ex: executando o script diretamente), ajusta o path e tenta novamente
     sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
     from src.auth import AuthService
     from src.utils import setup_logging
+    from src.config import RANK_HIERARCHY
 
 # URL da planilha do Google Sheets que serve como nosso banco de dados de usuários
 SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3u0Mnny-vm3aZkbYoXQo85IwbfkI6FtD7T_uNhnSLMTzZZarFgRJJTmONncFo8U7cUGlsYTj17aMM/pub?gid=0&single=true&output=csv"
@@ -39,12 +41,15 @@ class AppFBKMKLN:
         self.auth_service = AuthService(sheet_url=SHEET_URL)
         # Define o caminho padrão para a pasta que conterá os PDFs dos programas
         self.program_path = "assets/programa_tecnico"
+        self.videos_path = "assets/videos_tecnicas"
         # Garante que a pasta de programas exista, para evitar erros
-        if not os.path.exists(self.program_path):
+        if not os.path.exists(self.program_path) and os.path.exists(self.videos_path):
             os.makedirs(self.program_path)
+            os.makedirs(self.videos_path)
             logger.info(
                 f"Diretório de programas técnicos criado em: {self.program_path}"
             )
+            logger.info(f"Diretório de videos técnicos criado em: {self.videos_path}")
 
         # Configura as propriedades da página e o sistema de rotas
         self.setup_page_and_routes()
@@ -78,6 +83,10 @@ class AppFBKMKLN:
         # NOVA ROTA para a tela de programas técnicos
         elif self.page.route == "/program" and user_data:
             self.page.views.append(self.create_program_view(user=user_data))
+
+        # NOVA ROTA para a tela de vídeos.
+        elif self.page.route == "/videos" and user_data:
+            self.page.views.append(self.create_videos_view(user=user_data))
         else:
             # Se qualquer outra rota for acessada sem login, volta para o início
             logger.warning(
@@ -191,7 +200,6 @@ class AppFBKMKLN:
         header_row = ft.Row([ft.Container(expand=True), btn_logout])
         button_style = ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=ft.Colors.WHITE24)
 
-        # O on_click agora navega para a nova rota /program
         btn_programa = ft.ElevatedButton(
             "Programa Técnico",
             icon=ft.Icons.DESCRIPTION,
@@ -200,13 +208,15 @@ class AppFBKMKLN:
             style=button_style,
         )
 
+        # ATUALIZAÇÃO: O on_click agora navega para a nova rota /videos.
         btn_videos = ft.ElevatedButton(
             "Vídeos de Movimentos",
             icon=ft.Icons.VIDEO_LIBRARY,
-            on_click=lambda e: logger.debug("Botão 'Vídeos de Movimentos' clicado"),
+            on_click=lambda _: self.page.go("/videos"),
             height=50,
             style=button_style,
         )
+
         btn_analisador = ft.ElevatedButton(
             "Analisador de Movimentos",
             icon=ft.Icons.ANALYTICS,
@@ -222,6 +232,13 @@ class AppFBKMKLN:
             style=button_style,
             disabled=True,
         )
+        btn_local_treino = ft.ElevatedButton(
+            "Onde treinar",
+            icon=ft.Icons.GROUP,
+            on_click=lambda e: logger.debug("Botão 'Mídias Sociais' clicado"),
+            height=50,
+            style=button_style,
+        )
         btn_social = ft.ElevatedButton(
             "Mídias Sociais",
             icon=ft.Icons.GROUP,
@@ -236,6 +253,7 @@ class AppFBKMKLN:
                 ft.Column([btn_videos], col={"xs": 12, "sm": 6, "md": 4}),
                 ft.Column([btn_analisador], col={"xs": 12, "sm": 6, "md": 4}),
                 ft.Column([btn_cursos], col={"xs": 12, "sm": 6, "md": 4}),
+                ft.Column([btn_local_treino], col={"xs": 12, "sm": 6, "md": 4}),
                 ft.Column([btn_social], col={"xs": 12, "sm": 6, "md": 4}),
             ],
             alignment=ft.MainAxisAlignment.CENTER,
@@ -261,7 +279,6 @@ class AppFBKMKLN:
             ],
             padding=20,
         )
-
 
     def create_program_view(self, user: dict) -> ft.View:
         """Cria e retorna a View que lista os PDFs de programa técnico acessíveis."""
@@ -318,8 +335,6 @@ class AppFBKMKLN:
         return ft.View(
             "/program",
             [
-                
-                
                 ft.Row(
                     [
                         ft.IconButton(
@@ -344,6 +359,77 @@ class AppFBKMKLN:
             scroll=ft.ScrollMode.ADAPTIVE,  # Adiciona scroll se a lista de botões for grande
         )
 
+    def create_videos_view(self, user: dict) -> ft.View:
+        """Cria e retorna a View que lista os vídeos de técnicas acessíveis."""
+        logger.info(f"Criando a tela de vídeos de movimentos para o usuário: {user.get('LOGIN')}")
+
+        # Pega a lista de faixas que o usuário pode acessar.
+        accessible_ranks = self.auth_service.get_accessible_ranks(user)
+        
+        # Cria uma lista para armazenar todo o conteúdo da tela (títulos e vídeos).
+        videos_layout = []
+        try:
+            # Itera sobre a hierarquia oficial para manter a ordem correta das faixas.
+            for rank in RANK_HIERARCHY:
+                # Se a faixa atual da hierarquia estiver na lista de permissões do usuário...
+                if rank in accessible_ranks:
+                    rank_path = os.path.join(self.videos_path, rank)
+                    # ...e se a pasta para essa faixa existir...
+                    if os.path.isdir(rank_path):
+                        # ...lista os vídeos dentro dela.
+                        videos_in_rank = [v for v in os.listdir(rank_path) if v.lower().endswith(('.mp4', '.mov', '.avi'))]
+                        
+                        # Se houver vídeos, cria uma seção para essa faixa.
+                        if videos_in_rank:
+                            logger.debug(f"Encontrados {len(videos_in_rank)} vídeos para a faixa '{rank}'.")
+                            # Adiciona um título para a seção da faixa.
+                            videos_layout.append(ft.Text(f"Faixa {rank}", size=20, weight=ft.FontWeight.BOLD))
+                            
+                            # Cria uma linha responsiva para os cards de vídeo.
+                            video_cards_row = ft.ResponsiveRow(run_spacing=10, spacing=10)
+                            
+                            # Para cada vídeo, cria um "card" clicável.
+                            for video_file in sorted(videos_in_rank):
+                                video_path = os.path.join(rank_path, video_file).replace("\\", "/")
+                                # Formata o nome do arquivo para exibição (ex: "soco_direto.mp4" -> "Soco Direto").
+                                display_name = os.path.splitext(video_file)[0].replace("_", " ").title()
+                                
+                                # O card é um Container com estilo e conteúdo.
+                                card = ft.Container(
+                                    content=ft.Row([
+                                        ft.Icon(ft.Icons.SMART_DISPLAY_OUTLINED, color=ft.Colors.WHITE),
+                                        ft.Text(display_name, expand=True, no_wrap=True, tooltip=display_name),
+                                    ], spacing=15),
+                                    padding=15,
+                                    border=ft.border.all(1, ft.Colors.WHITE24),
+                                    border_radius=ft.border_radius.all(8),
+                                    bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.WHITE), # Fundo cinza sutil
+                                    # Ação de clique para abrir o vídeo.
+                                    on_click=lambda _, p=video_path: self.page.launch_url(f"file:///{os.path.abspath(p)}"),
+                                    tooltip=f"Abrir vídeo: {display_name}"
+                                )
+                                # Adiciona o card à linha responsiva.
+                                video_cards_row.controls.append(ft.Column([card], col={"xs": 12, "sm": 6, "md": 4}))
+                            
+                            videos_layout.append(video_cards_row)
+                            videos_layout.append(ft.Divider(height=20, color=ft.Colors.TRANSPARENT))
+
+        except Exception as e:
+            logger.error(f"Erro ao listar os vídeos de técnicas: {e}")
+            videos_layout.append(ft.Text("Não foi possível carregar os vídeos.", color=ft.Colors.RED))
+
+        # Cria a View final com um botão de voltar e o conteúdo gerado.
+        return ft.View(
+            "/videos",
+            [
+                ft.Row([ft.IconButton(icon=ft.icons.ARROW_BACK, on_click=lambda _: self.page.go("/dashboard"), tooltip="Voltar")]),
+                ft.Text("Videoteca de Técnicas", size=24, weight=ft.FontWeight.BOLD),
+                ft.Divider(),
+                # Adiciona o layout de vídeos dentro de uma coluna com scroll.
+                ft.Column(videos_layout, spacing=15, scroll=ft.ScrollMode.ADAPTIVE, expand=True)
+            ],
+            padding=20
+        )
 
 def main(page: ft.Page):
     """Função principal que inicia a aplicação Flet."""
