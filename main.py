@@ -1,26 +1,31 @@
 # main.py
 
+# flet é a biblioteca principal para a construção da interface.
 import flet as ft
+
+# logging é usado para registrar eventos e facilitar a depuração.
 import logging
+
+# sys e os são usados para manipulação de caminhos de arquivos e para a função de encerrar.
 import sys
 import os
 
 try:
-    # Tenta importar os módulos da estrutura 'src'
+    # Tenta importar os módulos da nossa estrutura de pastas 'src'.
     from src.auth import AuthService
     from src.utils import setup_logging
     from src.config import RANK_HIERARCHY
 except ImportError:
-    # Se falhar (ex: executando o script diretamente), ajusta o path e tenta novamente
+    # Se falhar (ex: executando o script de um local inesperado), ajusta o path e tenta novamente.
     sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
     from src.auth import AuthService
     from src.utils import setup_logging
     from src.config import RANK_HIERARCHY
 
-# URL da planilha do Google Sheets que serve como nosso banco de dados de usuários
+# URL da planilha do Google Sheets que serve como nosso banco de dados de usuários.
 SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3u0Mnny-vm3aZkbYoXQo85IwbfkI6FtD7T_uNhnSLMTzZZarFgRJJTmONncFo8U7cUGlsYTj17aMM/pub?gid=0&single=true&output=csv"
 
-# Inicializa o sistema de logging usando nossa função utilitária
+# Inicializa o sistema de logging usando nossa função utilitária.
 setup_logging()
 logger = logging.getLogger(__name__)
 
@@ -35,25 +40,20 @@ class AppFBKMKLN:
         Construtor da aplicação. É chamado uma única vez quando o app inicia.
         """
         logger.debug("Inicializando a classe AppFBKMKLN.")
-        # Armazena a instância da página principal do Flet
+        # Armazena a instância da página principal do Flet.
         self.page = page
-        # Cria uma instância do nosso serviço de autenticação
+        # Cria uma instância do nosso serviço de autenticação.
         self.auth_service = AuthService(sheet_url=SHEET_URL)
-        # Define o caminho padrão para a pasta que conterá os PDFs dos programas
+        # Define os caminhos padrão para as pastas de assets.
         self.program_path = "assets/programa_tecnico"
         self.videos_path = "assets/videos_tecnicas"
-        # Garante que a pasta de programas exista, para evitar erros
-        if not os.path.exists(self.program_path) and os.path.exists(self.videos_path):
-            os.makedirs(self.program_path)
-            os.makedirs(self.videos_path)
-            logger.info(
-                f"Diretório de programas técnicos criado em: {self.program_path}"
-            )
-            logger.info(f"Diretório de videos técnicos criado em: {self.videos_path}")
+        # **CORREÇÃO DO BUG:** Garante que ambas as pastas de assets existam de forma independente.
+        os.makedirs(self.program_path, exist_ok=True)
+        os.makedirs(self.videos_path, exist_ok=True)
 
-        # Configura as propriedades da página e o sistema de rotas
+        # Configura as propriedades da página e o sistema de rotas.
         self.setup_page_and_routes()
-        # Inicia a aplicação na rota raiz ("/")
+        # Inicia a aplicação na rota raiz ("/").
         self.page.go("/")
 
     def setup_page_and_routes(self):
@@ -62,33 +62,39 @@ class AppFBKMKLN:
         self.page.title = "FBKMKLN - Leão do Norte"
         self.page.theme_mode = ft.ThemeMode.DARK
         self.page.bgcolor = ft.Colors.BLACK
-        # Define as funções que serão chamadas quando a rota mudar ou o usuário voltar
+        # Define as funções que serão chamadas quando a rota mudar ou o usuário voltar.
         self.page.on_route_change = self.on_route_change
         self.page.on_view_pop = self.on_view_pop
 
     def on_route_change(self, route):
         """Função chamada sempre que a rota (URL) da página muda."""
         logger.info(f"Navegando para a rota: {self.page.route}")
-        # Limpa a tela antes de desenhar a nova View
+        # Limpa a tela antes de desenhar a nova View.
         self.page.views.clear()
 
-        # Recupera os dados do usuário do armazenamento da sessão
+        # Recupera os dados do usuário do armazenamento da sessão.
         user_data = self.page.client_storage.get("user_data")
 
-        # Lógica de roteamento: decide qual tela mostrar com base na URL
+        # Lógica de Roteamento.
         if self.page.route == "/":
             self.page.views.append(self.create_login_view())
         elif self.page.route == "/dashboard" and user_data:
             self.page.views.append(self.create_dashboard_view(user=user_data))
-        # NOVA ROTA para a tela de programas técnicos
         elif self.page.route == "/program" and user_data:
             self.page.views.append(self.create_program_view(user=user_data))
-
-        # NOVA ROTA para a tela de vídeos.
         elif self.page.route == "/videos" and user_data:
             self.page.views.append(self.create_videos_view(user=user_data))
+        # NOVA ROTA para a tela de detalhes do vídeo.
+        elif self.page.route.startswith("/video_details") and user_data:
+            # Extrai o caminho do vídeo da rota (ex: /video_details?path=assets/...).
+            video_path = self.page.route.split("?path=")[1]
+            self.page.views.append(
+                self.create_video_details_view(video_path=video_path)
+            )
+        # NOVA ROTA para a tela "Onde Treinar".
+        elif self.page.route == "/training_location" and user_data:
+            self.page.views.append(self.create_training_location_view())
         else:
-            # Se qualquer outra rota for acessada sem login, volta para o início
             logger.warning(
                 f"Acesso a rota '{self.page.route}' sem autenticação. Redirecionando para login."
             )
@@ -111,7 +117,6 @@ class AppFBKMKLN:
         user_data = self.auth_service.login(cpf, senha)
 
         if user_data:
-            # Armazena os dados do usuário na sessão para uso posterior
             self.page.client_storage.set("user_data", user_data)
             self.page.go("/dashboard")
         else:
@@ -177,17 +182,14 @@ class AppFBKMKLN:
 
     def create_dashboard_view(self, user: dict) -> ft.View:
         """Cria e retorna a View (página) do Dashboard."""
-        user_login_name = user.get("LOGIN", "Usuário").split(" ")[0]
+        user_login_name = user.get("LOGIN", "Usuário")
         logger.info(f"Exibindo dashboard para o usuário: {user_login_name}")
 
         logo_header = ft.Image(
-            src="/icon.jpg",
-            width=120,
-            height=120,
-            border_radius=ft.border_radius.all(40),
+            src="/icon.jpg", width=80, height=80, border_radius=ft.border_radius.all(40)
         )
         welcome_message = ft.Text(
-            f"Kidá (קידה), {user_login_name}!", size=24, weight=ft.FontWeight.BOLD
+            f"Kidá (קִדָּה), {user_login_name}!", size=24, weight=ft.FontWeight.BOLD
         )
         header_content = ft.Column(
             [logo_header, welcome_message],
@@ -207,8 +209,6 @@ class AppFBKMKLN:
             height=50,
             style=button_style,
         )
-
-        # ATUALIZAÇÃO: O on_click agora navega para a nova rota /videos.
         btn_videos = ft.ElevatedButton(
             "Vídeos de Movimentos",
             icon=ft.Icons.VIDEO_LIBRARY,
@@ -216,7 +216,6 @@ class AppFBKMKLN:
             height=50,
             style=button_style,
         )
-
         btn_analisador = ft.ElevatedButton(
             "Analisador de Movimentos",
             icon=ft.Icons.ANALYTICS,
@@ -232,13 +231,16 @@ class AppFBKMKLN:
             style=button_style,
             disabled=True,
         )
+
+        # NOVO BOTÃO "ONDE TREINAR"
         btn_local_treino = ft.ElevatedButton(
-            "Onde treinar",
-            icon=ft.Icons.GROUP,
-            on_click=lambda e: logger.debug("Botão 'Mídias Sociais' clicado"),
+            "Onde Treinar",
+            icon=ft.Icons.LOCATION_ON,
+            on_click=lambda _: self.page.go("/training_location"),
             height=50,
             style=button_style,
         )
+
         btn_social = ft.ElevatedButton(
             "Mídias Sociais",
             icon=ft.Icons.GROUP,
@@ -285,53 +287,44 @@ class AppFBKMKLN:
         logger.info(
             f"Criando a tela de programa técnico para o usuário: {user.get('LOGIN')}"
         )
-
-        # Obtém a lista de faixas que o usuário pode acessar
         accessible_ranks = self.auth_service.get_accessible_ranks(user)
 
-        # Cria uma lista para armazenar os botões dos PDFs
         program_buttons = []
         try:
-            # Lista todos os arquivos na pasta de programas
             all_programs = os.listdir(self.program_path)
             logger.debug(
                 f"Arquivos encontrados em '{self.program_path}': {all_programs}"
             )
 
-            # Filtra a lista para mostrar apenas os PDFs que o usuário pode acessar
-            for rank in accessible_ranks:
-                pdf_file = f"{rank}.pdf"
-                if pdf_file in all_programs:
-                    logger.debug(
-                        f"Permissão concedida para '{pdf_file}'. Criando botão."
-                    )
-                    # Constrói o caminho completo para o arquivo PDF
-                    pdf_path = os.path.join(self.program_path, pdf_file).replace(
-                        "\\", "/"
-                    )
-
-                    # Cria um botão para cada PDF acessível
-                    button = ft.ElevatedButton(
-                        text=f"Programa - Faixa {rank}",
-                        icon=ft.Icons.PICTURE_AS_PDF,
-                        # A ação do botão abre o PDF no visualizador padrão do sistema
-                        on_click=lambda _, p=pdf_path: self.page.launch_url(
-                            f"file:///{os.path.abspath(p)}"
-                        ),
-                        height=50,
-                    )
-                    program_buttons.append(button)
-                else:
-                    logger.warning(
-                        f"O arquivo '{pdf_file}' para a faixa acessível '{rank}' não foi encontrado na pasta de assets."
-                    )
+            for rank in RANK_HIERARCHY:  # Itera na ordem correta
+                if rank in accessible_ranks:
+                    pdf_file = f"{rank}.pdf"
+                    if pdf_file in all_programs:
+                        logger.debug(
+                            f"Permissão concedida para '{pdf_file}'. Criando botão."
+                        )
+                        pdf_path = os.path.join(self.program_path, pdf_file).replace(
+                            "\\", "/"
+                        )
+                        button = ft.ElevatedButton(
+                            text=f"Programa - Faixa {rank}",
+                            icon=ft.Icons.PICTURE_AS_PDF,
+                            on_click=lambda _, p=pdf_path: self.page.launch_url(
+                                f"file:///{os.path.abspath(p)}"
+                            ),
+                            height=50,
+                        )
+                        program_buttons.append(button)
+                    else:
+                        logger.warning(
+                            f"O arquivo '{pdf_file}' para a faixa acessível '{rank}' não foi encontrado."
+                        )
         except Exception as e:
             logger.error(f"Erro ao listar os PDFs do programa técnico: {e}")
             program_buttons.append(
                 ft.Text("Não foi possível carregar os programas.", color=ft.Colors.RED)
             )
 
-        # Cria o layout da tela de programas
         return ft.View(
             "/program",
             [
@@ -344,92 +337,231 @@ class AppFBKMKLN:
                         )
                     ]
                 ),
+                ft.Text("Programa Técnico", size=24, weight=ft.FontWeight.BOLD),
+                ft.Divider(),
                 ft.Column(
-                    [
-                        ft.Text("Programa Técnico", size=24, weight=ft.FontWeight.BOLD),
-                        ft.Divider(),
-                        # Desempacota a lista de botões na tela
-                        *program_buttons,
-                    ],
+                    program_buttons,
                     spacing=15,
-                    horizontal_alignment=ft.CrossAxisAlignment.STRETCH,  # Faz os botões ocuparem a largura
+                    scroll=ft.ScrollMode.ADAPTIVE,
+                    expand=True,
+                    horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
                 ),
             ],
             padding=20,
-            scroll=ft.ScrollMode.ADAPTIVE,  # Adiciona scroll se a lista de botões for grande
         )
 
     def create_videos_view(self, user: dict) -> ft.View:
         """Cria e retorna a View que lista os vídeos de técnicas acessíveis."""
-        logger.info(f"Criando a tela de vídeos de movimentos para o usuário: {user.get('LOGIN')}")
-
-        # Pega a lista de faixas que o usuário pode acessar.
+        logger.info(
+            f"Criando a tela de vídeos de movimentos para o usuário: {user.get('LOGIN')}"
+        )
         accessible_ranks = self.auth_service.get_accessible_ranks(user)
-        
-        # Cria uma lista para armazenar todo o conteúdo da tela (títulos e vídeos).
+
         videos_layout = []
         try:
-            # Itera sobre a hierarquia oficial para manter a ordem correta das faixas.
             for rank in RANK_HIERARCHY:
-                # Se a faixa atual da hierarquia estiver na lista de permissões do usuário...
                 if rank in accessible_ranks:
                     rank_path = os.path.join(self.videos_path, rank)
-                    # ...e se a pasta para essa faixa existir...
                     if os.path.isdir(rank_path):
-                        # ...lista os vídeos dentro dela.
-                        videos_in_rank = [v for v in os.listdir(rank_path) if v.lower().endswith(('.mp4', '.mov', '.avi'))]
-                        
-                        # Se houver vídeos, cria uma seção para essa faixa.
+                        videos_in_rank = [
+                            v
+                            for v in os.listdir(rank_path)
+                            if v.lower().endswith((".mp4", ".mov", ".avi"))
+                        ]
                         if videos_in_rank:
-                            logger.debug(f"Encontrados {len(videos_in_rank)} vídeos para a faixa '{rank}'.")
-                            # Adiciona um título para a seção da faixa.
-                            videos_layout.append(ft.Text(f"Faixa {rank}", size=20, weight=ft.FontWeight.BOLD))
-                            
-                            # Cria uma linha responsiva para os cards de vídeo.
-                            video_cards_row = ft.ResponsiveRow(run_spacing=10, spacing=10)
-                            
-                            # Para cada vídeo, cria um "card" clicável.
+                            videos_layout.append(
+                                ft.Text(
+                                    f"Faixa {rank}", size=20, weight=ft.FontWeight.BOLD
+                                )
+                            )
+                            video_cards_row = ft.ResponsiveRow(
+                                run_spacing=10, spacing=10
+                            )
                             for video_file in sorted(videos_in_rank):
-                                video_path = os.path.join(rank_path, video_file).replace("\\", "/")
-                                # Formata o nome do arquivo para exibição (ex: "soco_direto.mp4" -> "Soco Direto").
-                                display_name = os.path.splitext(video_file)[0].replace("_", " ").title()
-                                
-                                # O card é um Container com estilo e conteúdo.
+                                video_path = os.path.join(
+                                    rank_path, video_file
+                                ).replace("\\", "/")
+                                display_name = (
+                                    os.path.splitext(video_file)[0]
+                                    .replace("_", " ")
+                                    .title()
+                                )
                                 card = ft.Container(
-                                    content=ft.Row([
-                                        ft.Icon(ft.Icons.SMART_DISPLAY_OUTLINED, color=ft.Colors.WHITE),
-                                        ft.Text(display_name, expand=True, no_wrap=True, tooltip=display_name),
-                                    ], spacing=15),
+                                    content=ft.Row(
+                                        [
+                                            ft.Icon(
+                                                ft.Icons.SMART_DISPLAY_OUTLINED,
+                                                color=ft.Colors.WHITE,
+                                            ),
+                                            ft.Text(
+                                                display_name,
+                                                expand=True,
+                                                no_wrap=True,
+                                                tooltip=display_name,
+                                            ),
+                                        ],
+                                        spacing=15,
+                                    ),
                                     padding=15,
                                     border=ft.border.all(1, ft.Colors.WHITE24),
                                     border_radius=ft.border_radius.all(8),
-                                    bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.WHITE), # Fundo cinza sutil
-                                    # Ação de clique para abrir o vídeo.
-                                    on_click=lambda _, p=video_path: self.page.launch_url(f"file:///{os.path.abspath(p)}"),
-                                    tooltip=f"Abrir vídeo: {display_name}"
+                                    bgcolor=ft.Colors.with_opacity(
+                                        0.05, ft.Colors.WHITE
+                                    ),
+                                    on_click=lambda _, p=video_path: self.page.go(
+                                        f"/video_details?path={p}"
+                                    ),
+                                    tooltip=f"Abrir vídeo: {display_name}",
                                 )
-                                # Adiciona o card à linha responsiva.
-                                video_cards_row.controls.append(ft.Column([card], col={"xs": 12, "sm": 6, "md": 4}))
-                            
+                                video_cards_row.controls.append(
+                                    ft.Column([card], col={"xs": 12, "sm": 6, "md": 4})
+                                )
                             videos_layout.append(video_cards_row)
-                            videos_layout.append(ft.Divider(height=20, color=ft.Colors.TRANSPARENT))
-
+                            videos_layout.append(
+                                ft.Divider(height=20, color=ft.Colors.TRANSPARENT)
+                            )
         except Exception as e:
             logger.error(f"Erro ao listar os vídeos de técnicas: {e}")
-            videos_layout.append(ft.Text("Não foi possível carregar os vídeos.", color=ft.Colors.RED))
+            videos_layout.append(
+                ft.Text("Não foi possível carregar os vídeos.", color=ft.Colors.RED)
+            )
 
-        # Cria a View final com um botão de voltar e o conteúdo gerado.
         return ft.View(
             "/videos",
             [
-                ft.Row([ft.IconButton(icon=ft.icons.ARROW_BACK, on_click=lambda _: self.page.go("/dashboard"), tooltip="Voltar")]),
+                ft.Row(
+                    [
+                        ft.IconButton(
+                            icon=ft.Icons.ARROW_BACK,
+                            on_click=lambda _: self.page.go("/dashboard"),
+                            tooltip="Voltar",
+                        )
+                    ]
+                ),
                 ft.Text("Videoteca de Técnicas", size=24, weight=ft.FontWeight.BOLD),
                 ft.Divider(),
-                # Adiciona o layout de vídeos dentro de uma coluna com scroll.
-                ft.Column(videos_layout, spacing=15, scroll=ft.ScrollMode.ADAPTIVE, expand=True)
+                ft.Column(
+                    videos_layout,
+                    spacing=15,
+                    scroll=ft.ScrollMode.ADAPTIVE,
+                    expand=True,
+                ),
             ],
-            padding=20
+            padding=20,
         )
+
+    def create_video_details_view(self, video_path: str) -> ft.View:
+        """Cria e retorna a View de detalhes para um vídeo específico."""
+        logger.info(f"Criando a tela de detalhes para o vídeo: {video_path}")
+
+        video_name = (
+            os.path.splitext(os.path.basename(video_path))[0].replace("_", " ").title()
+        )
+        description_path = os.path.splitext(video_path)[0] + ".txt"
+        description_text = "Descrição não disponível."
+        if os.path.exists(description_path):
+            try:
+                with open(description_path, "r", encoding="utf-8") as f:
+                    description_text = f.read()
+            except Exception as e:
+                logger.error(
+                    f"Erro ao ler arquivo de descrição {description_path}: {e}"
+                )
+
+        video_player = ft.Video(
+            expand=True,
+            playlist=[ft.VideoMedia(resource=video_path)],  # Use 'resource' para assets
+            playlist_mode=ft.PlaylistMode.NONE,
+            autoplay=False,
+        )
+
+        return ft.View(
+            f"/video_details?path={video_path}",
+            [
+                ft.Row(
+                    [
+                        ft.IconButton(
+                            icon=ft.Icons.ARROW_BACK_IOS,
+                            on_click=lambda _: self.page.go("/videos"),
+                            tooltip="Voltar",
+                        ),
+                        ft.Text(
+                            "Detalhes da Técnica", size=18, weight=ft.FontWeight.BOLD
+                        ),
+                    ]
+                ),
+                ft.Container(
+                    ft.Column(
+                        [
+                            ft.Container(
+                                content=video_player,
+                                height=250,
+                                bgcolor=ft.Colors.BLACK,
+                                border_radius=ft.border_radius.only(
+                                    top_left=15, top_right=15
+                                ),
+                            ),
+                            ft.Container(
+                                ft.Column(
+                                    [
+                                        ft.Text(
+                                            video_name,
+                                            size=22,
+                                            weight=ft.FontWeight.BOLD,
+                                        ),
+                                        ft.Text(
+                                            description_text,
+                                            size=14,
+                                            color=ft.Colors.WHITE70,
+                                        ),
+                                    ],
+                                    spacing=10,
+                                    scroll=ft.ScrollMode.ADAPTIVE,
+                                ),
+                                padding=20,
+                                expand=True,
+                            ),
+                        ],
+                        expand=True,
+                    ),
+                    border_radius=ft.border_radius.all(15),
+                    bgcolor=ft.Colors.WHITE10,
+                    expand=True,
+                ),
+            ],
+            padding=20,
+        )
+
+    def create_training_location_view(self) -> ft.View:
+        """Cria e retorna a View (placeholder) para 'Onde Treinar'."""
+        logger.info("Criando a tela 'Onde Treinar'.")
+
+        return ft.View(
+            "/training_location",
+            [
+                ft.Row(
+                    [
+                        ft.IconButton(
+                            icon=ft.Icons.ARROW_BACK,
+                            on_click=lambda _: self.page.go("/dashboard"),
+                            tooltip="Voltar",
+                        )
+                    ]
+                ),
+                ft.Column(
+                    [
+                        ft.Text("Onde Treinar", size=24, weight=ft.FontWeight.BOLD),
+                        ft.Divider(),
+                        ft.Text("Funcionalidade em desenvolvimento.", size=16),
+                        ft.Text("Em breve: Endereços, horários e mapa."),
+                    ],
+                    spacing=15,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+            ],
+            padding=20,
+        )
+
 
 def main(page: ft.Page):
     """Função principal que inicia a aplicação Flet."""
