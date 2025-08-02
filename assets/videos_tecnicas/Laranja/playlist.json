@@ -1,0 +1,32 @@
+[
+    {
+        "file": "01_taf_laranja.mp4",
+        "title": "TAF - Teste de Aptidão Física",
+        "description": "Sequência de aquecimento: 200 polichinelos, 100 abdominais, 25 flexões."
+    },
+    {
+        "file": "02_revisao_defesas_punho.mp4",
+        "title": "Revisão: Defesas de Punho (Completo)",
+        "description": "Execução detalhada das 11 defesas, adicionando finalizações como imobilização, pisão e desequilibrantes."
+    },
+    {
+        "file": "03_defesa_de_bastao.mp4",
+        "title": "Defesa de Bastão",
+        "description": "Técnicas de defesa contra ataques de bastão, com foco em soltura e imobilização da arma."
+    },
+    {
+        "file": "04_defesa_de_faca.mp4",
+        "title": "Defesa de Faca",
+        "description": "Técnica de defesa contra ataque de faca em 45 graus, com contra-ataque na genitália e imobilização."
+    },
+    {
+        "file": "05_defesa_de_chutes.mp4",
+        "title": "Defesa de Chutes",
+        "description": "Defesas com Marpek e aplicação de contra-golpe com chute giratório."
+    },
+    {
+        "file": "06_kravot_e_rolamentos.mp4",
+        "title": "Kravot e Rolamentos Avançados",
+        "description": "Execução de rolamentos com distância e altura, e prática de Kravot (combate)."
+    }
+]
