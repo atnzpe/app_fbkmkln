@@ -1,104 +1,63 @@
 # main.py
 
-# BIBLIOTECAS PADRÃO E DE TERCEIROS
-# ==================================
-# flet é a biblioteca principal para a construção da interface gráfica.
 import flet as ft
-
-# logging é usado para registrar eventos e facilitar a depuração.
 import logging
-
-# sys e os são usados para manipulação de caminhos de arquivos e para a função de encerrar.
 import sys
 import os
-
-# json é usado para serializar (converter para texto) a playlist ao passá-la entre as Views.
 import json
 
-# IMPORTAÇÕES DOS NOSSOS MÓDULOS
-# ==============================
+# Importações necessárias para o player de vídeo corrigido
+import threading
+import time
+
 try:
-    # Tenta importar os módulos da nossa estrutura de pastas 'src'.
     from src.auth import AuthService
     from src.utils import setup_logging
     from src.config import RANK_HIERARCHY
     from src.playlist_service import PlaylistService
 except ImportError:
-    # Se falhar (ex: executando o script de um local inesperado), ajusta o path do sistema e tenta novamente.
-    # Isso garante que o aplicativo encontre os arquivos em 'src'.
     sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
     from src.auth import AuthService
     from src.utils import setup_logging
     from src.config import RANK_HIERARCHY
     from src.playlist_service import PlaylistService
 
-# CONSTANTES GLOBAIS
-# ==================
-# URL da planilha do Google Sheets que serve como nosso banco de dados de usuários.
 SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3u0Mnny-vm3aZkbYoXQo85IwbfkI6FtD7T_uNhnSLMTzZZarFgRJJTmONncFo8U7cUGlsYTj17aMM/pub?gid=0&single=true&output=csv"
 
-# CONFIGURAÇÃO INICIAL
-# ====================
-# Inicializa o sistema de logging usando nossa função utilitária do 'utils.py'.
 setup_logging()
-# Cria uma instância do logger específica para este arquivo (main.py).
 logger = logging.getLogger(__name__)
 
 
 class AppFBKMKLN:
-    """
-    Classe principal que gerencia as telas (Views), a navegação e a lógica do aplicativo da Federação.
-    """
-
     def __init__(self, page: ft.Page):
-        """
-        Construtor da aplicação. É chamado uma única vez quando o app inicia.
-        """
         logger.debug("Inicializando a classe AppFBKMKLN.")
-        # Armazena a instância da página principal do Flet, que é a "tela" do nosso app.
         self.page = page
-        # Cria uma instância do nosso serviço de autenticação, passando a URL da planilha.
         self.auth_service = AuthService(sheet_url=SHEET_URL)
-
-        # Define os caminhos padrão para as pastas de assets.
         self.program_path = "assets/programa_tecnico"
         self.videos_path = "assets/videos_tecnicas"
-
-        # Cria uma instância do nosso serviço de playlists, informando onde os vídeos estão.
         self.playlist_service = PlaylistService(videos_base_path=self.videos_path)
         self.is_training_active = False  # Flag para controlar a thread do player
-        # Garante que as pastas de assets existam para evitar erros de 'Arquivo não encontrado'.
+
         os.makedirs(self.program_path, exist_ok=True)
         os.makedirs(self.videos_path, exist_ok=True)
 
-        # Configura as propriedades da página e o sistema de rotas.
         self.setup_page_and_routes()
-        # Inicia a aplicação na rota raiz ("/"), que mostrará a tela de login.
         self.page.go("/")
 
     def setup_page_and_routes(self):
-        """Configura as propriedades globais da página e o sistema de rotas."""
         logger.debug("Configurando propriedades da página Flet e rotas.")
         self.page.title = "FBKMKLN - Leão do Norte"
         self.page.theme_mode = ft.ThemeMode.DARK
         self.page.bgcolor = ft.Colors.BLACK
-        # Define as funções que serão chamadas quando a rota mudar ou o usuário voltar.
         self.page.on_route_change = self.on_route_change
         self.page.on_view_pop = self.on_view_pop
 
     def on_route_change(self, route):
-        """
-        Função chamada sempre que a rota (URL) da página muda.
-        Atua como o roteador principal da aplicação.
-        """
         logger.info(f"Navegando para a rota: {self.page.route}")
-        # Limpa a tela antes de desenhar a nova View.
         self.page.views.clear()
 
-        # Recupera os dados do usuário do armazenamento da sessão para verificar se ele está logado.
         user_data = self.page.client_storage.get("user_data")
 
-        # Lógica de Roteamento: decide qual tela (View) mostrar com base na URL.
         if self.page.route == "/":
             self.page.views.append(self.create_login_view())
         elif self.page.route == "/dashboard" and user_data:
@@ -107,7 +66,6 @@ class AppFBKMKLN:
             self.page.views.append(self.create_program_view(user=user_data))
         elif self.page.route == "/videos" and user_data:
             self.page.views.append(self.create_videos_view(user=user_data))
-        # Rota para o player de treino.
         elif self.page.route.startswith("/training_player") and user_data:
             playlist_json = self.page.client_storage.get("current_playlist")
             if playlist_json:
@@ -117,29 +75,22 @@ class AppFBKMKLN:
                 )
             else:
                 self.page.go("/videos")
-        # Rota para a tela de conclusão de treino.
         elif self.page.route == "/training_complete" and user_data:
             self.page.views.append(self.create_training_complete_view(user=user_data))
-        # Rota para "Onde Treinar".
         elif self.page.route == "/training_location" and user_data:
             self.page.views.append(self.create_training_location_view())
         else:
-            logger.warning(
-                f"Acesso a rota '{self.page.route}' sem autenticação. Redirecionando para login."
-            )
             self.page.views.append(self.create_login_view())
 
         self.page.update()
 
     def on_view_pop(self, view):
-        """Função chamada quando o usuário clica no botão "voltar" do sistema."""
         logger.debug("Evento on_view_pop acionado.")
         self.page.views.pop()
         top_view = self.page.views[-1]
         self.page.go(top_view.route)
 
     def login(self, e):
-        """Valida as credenciais e navega para o dashboard."""
         cpf = self.cpf_field.value
         senha = self.password_field.value
         logger.info(f"Tentativa de login para o CPF: {cpf}")
@@ -153,7 +104,6 @@ class AppFBKMKLN:
             self.page.update()
 
     def logout(self, e):
-        """Limpa os dados da sessão e volta para a tela de login."""
         logger.info(
             f"Usuário '{self.page.client_storage.get('user_data').get('LOGIN')}' fazendo logout."
         )
@@ -419,74 +369,7 @@ class AppFBKMKLN:
             padding=20,
         )
 
-    def create_videos_view(self, user: dict) -> ft.View:
-        """Cria a View que mostra as opções de treino, com a nova regra de exame."""
-        logger.info(f"Criando a tela de seleção de treino para: {user.get('LOGIN')}")
-        accessible_ranks = self.auth_service.get_accessible_ranks(user)
-        # Pega a próxima graduação real do aluno a partir dos seus dados.
-        user_next_rank = user.get("PROXIMA_GRADUACAO")
-
-        layout_controls = []
-        try:
-            for rank in RANK_HIERARCHY:
-                if rank in accessible_ranks:
-                    if os.path.exists(
-                        os.path.join(self.videos_path, rank, "playlist.json")
-                    ):
-                        layout_controls.append(
-                            ft.Text(f"Faixa {rank}", size=20, weight=ft.FontWeight.BOLD)
-                        )
-
-                        train_button = ft.ElevatedButton(
-                            text=f"Treinar Faixa {rank}",
-                            icon=ft.Icons.PLAYLIST_PLAY,
-                            on_click=lambda _, r=rank: self.start_training(
-                                playlist_type="rank", rank=r
-                            ),
-                            height=50,
-                        )
-
-                        # **NOVA REGRA:** O botão de exame só aparece se a próxima faixa
-                        # da hierarquia for a PRÓXIMA GRADUAÇÃO oficial do aluno.
-                        current_rank_index = RANK_HIERARCHY.index(rank)
-                        if current_rank_index + 1 < len(RANK_HIERARCHY):
-                            next_rank_in_hierarchy = RANK_HIERARCHY[
-                                current_rank_index + 1
-                            ]
-                            if next_rank_in_hierarchy == user_next_rank:
-                                exam_button = ft.ElevatedButton(
-                                    text=f"Simular Exame para {next_rank_in_hierarchy}",
-                                    icon=ft.Icons.VIDEO_CAMERA_FRONT,
-                                    on_click=lambda _, r=next_rank_in_hierarchy: self.start_training(
-                                        playlist_type="exam", rank=r
-                                    ),
-                                    height=50,
-                                )
-                                layout_controls.append(
-                                    ft.Row(
-                                        [train_button, exam_button],
-                                        spacing=10,
-                                        alignment=ft.MainAxisAlignment.CENTER,
-                                    )
-                                )
-                            else:
-                                layout_controls.append(train_button)
-                        else:
-                            layout_controls.append(train_button)
-
-                        layout_controls.append(ft.Divider(height=20))
-        except Exception as e:
-            logger.error(f"Erro ao criar a visualização de vídeos: {e}")
-            layout_controls.append(
-                ft.Text(
-                    "Não foi possível carregar as opções de treino.",
-                    color=ft.colors.RED,
-                )
-            )
-
-        return ft.View("/videos", [...])  # Omitido por brevidade
-
-    def start_training(self, playlist_type: str, rank: str):
+    
         """Prepara e inicia uma sessão de treino."""
         logger.info(
             f"Iniciando treino do tipo '{playlist_type}' para a faixa '{rank}'."
@@ -504,42 +387,141 @@ class AppFBKMKLN:
         self.page.client_storage.set("current_playlist", json.dumps(playlist))
         self.page.go("/training_player")
 
+    def create_videos_view(self, user: dict) -> ft.View:
+        """Cria a View que mostra as opções de treino, com a nova regra de exame."""
+        logger.info(f"Criando a tela de seleção de treino para: {user.get('LOGIN')}")
+        accessible_ranks = self.auth_service.get_accessible_ranks(user)
+        user_next_rank = user.get("PROXIMA_GRADUACAO")
+        
+        layout_controls = []
+        try:
+            for rank in RANK_HIERARCHY:
+                if rank in accessible_ranks:
+                    if os.path.exists(os.path.join(self.videos_path, rank, "playlist.json")):
+                        layout_controls.append(ft.Text(f"Faixa {rank}", size=20, weight=ft.FontWeight.BOLD))
+                        
+                        train_button = ft.ElevatedButton(
+                            text=f"Treinar Faixa {rank}",
+                            icon=ft.Icons.PLAYLIST_PLAY,
+                            on_click=lambda _, r=rank: self.start_training(playlist_type='rank', rank=r),
+                            height=50
+                        )
+                        
+                        # **NOVA REGRA:** O botão de exame só aparece se a próxima faixa
+                        # da hierarquia for a PRÓXIMA GRADUAÇÃO oficial do aluno.
+                        current_rank_index = RANK_HIERARCHY.index(rank)
+                        if current_rank_index + 1 < len(RANK_HIERARCHY):
+                            next_rank_in_hierarchy = RANK_HIERARCHY[current_rank_index + 1]
+                            if next_rank_in_hierarchy == user_next_rank:
+                                exam_button = ft.ElevatedButton(
+                                    text=f"Simular Exame para {next_rank_in_hierarchy}",
+                                    icon=ft.Icons.VIDEO_CAMERA_FRONT,
+                                    on_click=lambda _, r=next_rank_in_hierarchy: self.start_training(playlist_type='exam', rank=r),
+                                    height=50
+                                )
+                                layout_controls.append(ft.Row([train_button, exam_button], spacing=10, alignment=ft.MainAxisAlignment.CENTER))
+                            else:
+                                layout_controls.append(train_button)
+                        else:
+                            layout_controls.append(train_button)
+
+                        layout_controls.append(ft.Divider(height=20))
+        except Exception as e:
+            logger.error(f"Erro ao criar a visualização de vídeos: {e}")
+            layout_controls.append(ft.Text("Não foi possível carregar as opções de treino.", color=ft.colors.RED))
+
+        return ft.View(
+            "/videos",
+            [
+                ft.Row([ft.IconButton(icon=ft.Icons.ARROW_BACK, on_click=lambda _: self.page.go("/dashboard"), tooltip="Voltar")]),
+                ft.Text("Modos de Treino", size=24, weight=ft.FontWeight.BOLD),
+                ft.Divider(),
+                ft.Column(layout_controls, spacing=15, scroll=ft.ScrollMode.ADAPTIVE, expand=True)
+            ],
+            padding=20
+        )
+
+    def start_training(self, playlist_type: str, rank: str):
+        logger.info(f"Iniciando treino do tipo '{playlist_type}' para a faixa '{rank}'.")
+        playlist = []
+        if playlist_type == 'rank':
+            playlist = self.playlist_service.get_rank_playlist(rank)
+        elif playlist_type == 'exam':
+            playlist = self.playlist_service.get_exam_playlist(rank)
+            
+        if not playlist:
+            logger.warning("Nenhum vídeo encontrado para iniciar o treino.")
+            return
+        
+        self.page.client_storage.set("current_playlist", json.dumps(playlist))
+        self.page.go("/training_player")
+
     def create_training_player_view(self, playlist: list, user: dict) -> ft.View:
-        """Cria e retorna a View do player de treino, agora corrigida."""
+        """
+        Cria e retorna a View do player de treino, agora corrigida.
+        Esta tela é responsável por reproduzir a sequência de vídeos de uma playlist.
+
+        Args:
+            playlist (list): A lista de dicionários de vídeo a ser reproduzida.
+            user (dict): Os dados do usuário logado.
+        """
+        # Refs são usados para manter o estado de variáveis que precisam ser acessadas
+        # por diferentes funções dentro do escopo desta View.
         current_video_index = ft.Ref[int]()
+        # Inicia o treino no primeiro vídeo da lista (índice 0).
         current_video_index.current = 0
+        # Ativa a flag que controla o loop da nossa thread "vigia".
         self.is_training_active = True
 
+        # Cria os controles da UI que serão atualizados dinamicamente (título e descrição).
         video_title = ft.Text(value="", size=22, weight=ft.FontWeight.BOLD)
         video_description = ft.Text(value="", size=14, color=ft.Colors.WHITE70)
 
-        # **CORREÇÃO:** O player de vídeo é criado sem o argumento 'on_ended'.
+        # **CORREÇÃO:** O player de vídeo é criado sem o argumento 'on_ended', que não é mais suportado.
         video_player = ft.Video(expand=True, autoplay=True)
 
         def update_video_display(start_watch_thread=False):
-            """Atualiza o player e os textos com o vídeo atual."""
+            """
+            Função interna para atualizar o player de vídeo, o título e a descrição
+            com base no vídeo atual da playlist.
+            """
+            # Verifica se o índice atual é válido para a playlist.
             if current_video_index.current < len(playlist):
+                # Pega as informações do vídeo atual.
                 video_info = playlist[current_video_index.current]
+                # Pega o nome da pasta da faixa (ex: "Branca"), que foi adicionado pelo PlaylistService.
                 rank_folder = video_info.get("rank_folder")
+
                 if rank_folder:
+                    # Constrói o caminho completo e correto para o arquivo de vídeo.
                     video_path = os.path.join(
                         self.videos_path, rank_folder, video_info["file"]
                     ).replace("\\", "/")
+
+                    # Limpa a playlist atual do player e adiciona o novo vídeo.
                     video_player.playlist_clear()
+                    # **CORREÇÃO:** A propriedade correta para assets locais é 'resource'.
                     video_player.playlist_add(ft.VideoMedia(video_path))
+
+                    # Atualiza os textos na tela.
                     video_title.value = video_info.get("title", "Título indisponível")
                     video_description.value = video_info.get(
                         "description", "Descrição indisponível."
                     )
+
+                    # Habilita ou desabilita os botões de navegação conforme a posição na playlist.
                     prev_button.disabled = current_video_index.current == 0
                     next_button.disabled = (
                         current_video_index.current == len(playlist) - 1
                     )
+
+                    # Inicia a reprodução do vídeo.
                     video_player.play()
+                    # Envia todas as atualizações para a interface do usuário.
                     self.page.update()
 
+                    # Se instruído, inicia a thread "vigia" para este vídeo.
                     if start_watch_thread:
-                        # Inicia o "vigia" em uma thread separada.
                         threading.Thread(target=watch_video_end, daemon=True).start()
                 else:
                     logger.error(
@@ -547,47 +529,62 @@ class AppFBKMKLN:
                     )
 
         def next_video(e=None):
-            """Avança para o próximo vídeo ou finaliza o treino."""
+            """Avança para o próximo vídeo na playlist ou finaliza o treino."""
+            # Verifica se não estamos no último vídeo.
             if current_video_index.current < len(playlist) - 1:
                 current_video_index.current += 1
                 update_video_display(start_watch_thread=True)
+            # Se for o último vídeo, encerra o treino.
             elif self.is_training_active:
-                self.is_training_active = False
+                self.is_training_active = False  # Para a thread do vigia
                 self.page.go("/training_complete")
 
         def prev_video(e):
-            """Volta para o vídeo anterior."""
+            """Volta para o vídeo anterior na playlist."""
             if current_video_index.current > 0:
                 current_video_index.current -= 1
                 update_video_display(start_watch_thread=True)
 
         def watch_video_end():
-            """Função "vigia" que roda em segundo plano para detectar o fim do vídeo."""
+            """
+            Função "vigia" que roda em uma thread para detectar o fim do vídeo,
+            já que o evento 'on_ended' não está mais disponível.
+            """
             logger.debug(
                 f"Vigia iniciado para o vídeo {current_video_index.current + 1}."
             )
             while self.is_training_active:
-                time.sleep(1)
+                time.sleep(1)  # Verifica a cada segundo.
                 if not self.is_training_active:
                     break
                 try:
+                    # Pega a duração total e a posição atual do vídeo (em milissegundos).
                     duration = video_player.get_duration()
                     position = video_player.get_current_position()
-                    if duration and position and (duration - position) < 1000:
+
+                    # Se a duração e a posição forem válidas e a posição estiver perto do fim...
+                    if (
+                        duration and position and (duration - position) < 1000
+                    ):  # 1000ms = 1 segundo
                         logger.info("Fim do vídeo detectado pelo vigia.")
+                        # Chama a função 'next_video' na thread principal da UI para evitar erros.
                         self.page.run_thread(target=next_video)
-                        break
+                        break  # Encerra este vigia, pois o vídeo acabou.
                 except:
+                    # Se houver um erro (ex: a View foi destruída), apenas para o loop.
                     break
             logger.debug(
                 f"Vigia finalizado para o vídeo {current_video_index.current + 1}."
             )
 
+        # --- Lógica da Caixa de Diálogo de Confirmação ---
         def confirm_exit(e):
-            self.is_training_active = False
-            self.page.go("/videos")
+            """Função chamada se o usuário clicar 'Sim' no diálogo de saída."""
+            self.is_training_active = False  # Para a thread do vigia
+            self.page.go("/videos")  # Navega de volta para a seleção de treinos.
 
         def close_training_dialog(e):
+            """Função chamada se o usuário clicar 'Não'."""
             confirm_dialog.open = False
             self.page.update()
 
@@ -604,9 +601,11 @@ class AppFBKMKLN:
         self.page.dialog = confirm_dialog
 
         def open_exit_dialog(e):
+            """Abre a caixa de diálogo de confirmação."""
             confirm_dialog.open = True
             self.page.update()
 
+        # Cria os botões de navegação do player.
         prev_button = ft.IconButton(
             icon=ft.Icons.SKIP_PREVIOUS, on_click=prev_video, tooltip="Vídeo Anterior"
         )
@@ -615,6 +614,10 @@ class AppFBKMKLN:
         )
         exit_button = ft.ElevatedButton("Encerrar Treino", on_click=open_exit_dialog)
 
+        # Inicia a exibição com o primeiro vídeo da playlist e inicia o primeiro vigia.
+        update_video_display(start_watch_thread=True)
+
+        # Retorna a View completa do player de treino.
         return ft.View(
             "/training_player",
             [

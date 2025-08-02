@@ -76,14 +76,4 @@ https://flet.dev/docs
 
 https://github.com/flet-dev/flet
 
-Exemplos de Lógica e Comportamento:
-
-Vídeos: https://drive.google.com/drive/folders/1cztx3hQMcPckwccz1JyvxZZva_psZ25M?usp=drive_link
-
-Repositório de Código: https://github.com/asimov-academy/Analisador-de-saques-de-T-nis
-
-Referências Adicionais:
-
-https://www.youtube.com/watch?v=Ivummjqaaa8&t=4043s
-
-https://www.youtube.com/watch?v=v-esX4ktygA&t=206s (Background)
+https://github.com/atnzpe/app_fbkmkln

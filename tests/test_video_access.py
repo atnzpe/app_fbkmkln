@@ -12,15 +12,13 @@ from main import AppFBKMKLN
 
 @patch('os.path.isdir')
 @patch('os.listdir')
-def test_video_view_for_amarela(mock_listdir, mock_isdir):
+@patch('os.path.exists', return_value=True) # Adicionado para simular que playlist.json existe
+def test_video_view_for_amarela(mock_exists, mock_listdir, mock_isdir):
     """
     Cenário de Teste: Aluno Faixa Amarela
-    Verifica se a tela de vídeos exibe corretamente as seções e os vídeos
-    para as faixas Branca, Amarela e Laranja.
     """
     print("\nExecutando test_video_view_for_amarela...")
     
-    # Simula o ambiente, dizendo que as pastas existem e quais arquivos elas contêm.
     mock_isdir.return_value = True
     def listdir_side_effect(path):
         if "Branca" in path: return ["soco_direto.mp4"]
@@ -29,34 +27,34 @@ def test_video_view_for_amarela(mock_listdir, mock_isdir):
         return []
     mock_listdir.side_effect = listdir_side_effect
 
-    # Prepara o teste, criando uma instância do App e um usuário simulado.
     mock_page = MagicMock()
     app = AppFBKMKLN(mock_page)
-    user_data = {"LOGIN": "Teste", "GRADUACAO_ATUAL": "Amarela"}
+    user_data = {"LOGIN": "Teste", "GRADUACAO_ATUAL": "Amarela", "PROXIMA_GRADUACAO": "Laranja"}
     app.auth_service.get_accessible_ranks = MagicMock(return_value=["Branca", "Amarela", "Laranja"])
+    # Simula o playlist service para não depender do arquivo json real
+    app.playlist_service.get_rank_playlist = MagicMock(return_value=[{"file": "dummy.mp4"}])
 
-    # Executa a função que queremos testar.
+
     video_view = app.create_videos_view(user_data)
     
-    # Extrai o conteúdo da View para verificação.
+    # **CORREÇÃO:** A estrutura da View é [Row(voltar), Text(título), Divider, Column(conteúdo)]
+    # A coluna com os botões e títulos está no índice 3.
+    content_column = video_view.controls[3]
     content_str = ""
-    for control in video_view.controls[2].controls: # A coluna com o conteúdo
+    for control in content_column.controls:
         if isinstance(control, ft.Text):
             content_str += control.value
-        elif isinstance(control, ft.ResponsiveRow):
-            for col in control.controls:
-                content_str += col.controls[0].content.controls[1].value
+        elif isinstance(control, ft.Row): # Os botões estão em uma Row
+            for button in control.controls:
+                 if hasattr(button, 'text'):
+                    content_str += button.text
 
-    # Verifica se as seções corretas estão presentes e as incorretas não.
     assert "Faixa Branca" in content_str
     assert "Faixa Amarela" in content_str
     assert "Faixa Laranja" in content_str
     assert "Faixa Verde" not in content_str
     print("✓ Seções de faixas renderizadas corretamente.")
     
-    # Verifica se os nomes dos vídeos estão corretos.
-    assert "Soco Direto" in content_str
-    assert "Rolamento" in content_str
-    assert "Defesa 360" in content_str
-    assert "Defesa Faca" in content_str
-    print("✓ Cards de vídeo encontrados e nomeados corretamente.")
+    assert "Treinar Faixa Branca" in content_str
+    assert "Simular Exame para Laranja" in content_str
+    print("✓ Botões de treino e exame encontrados corretamente.")
