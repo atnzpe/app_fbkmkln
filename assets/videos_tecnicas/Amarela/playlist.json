@@ -3,30 +3,5 @@
         "file": "01_taf_amarela.mp4",
         "title": "TAF - Teste de Aptidão Física",
         "description": "Sequência de aquecimento: 100 Polichinelos, 50 abdominais, 20 Flexões de Braço."
-    },
-    {
-        "file": "02_defesas_pegada_punho.mp4",
-        "title": "Defesas de Pegada de Punho",
-        "description": "Execução das 11 defesas contra pegadas de punho, incluindo técnicas como Cascudinho, Motoca e Caminho da Morte."
-    },
-    {
-        "file": "03_defesa_abraco_urso.mp4",
-        "title": "Defesa de Abraço de Urso",
-        "description": "Técnicas de defesa contra abraços por trás, de lado e frontais (com braços soltos e presos)."
-    },
-    {
-        "file": "04_defesa_gravata_porteiro.mp4",
-        "title": "Defesa de Gravata de Porteiro",
-        "description": "Liberação de gravata lateral utilizando pontos de pressão (olhos) e golpes na genitália e glote."
-    },
-    {
-        "file": "05_defesa_esganadura.mp4",
-        "title": "Defesa de Esganadura",
-        "description": "Técnicas contra estrangulamento frontal, lateral, por trás e contra a parede."
-    },
-    {
-        "file": "06_defesa_de_socos.mp4",
-        "title": "Defesa de Socos",
-        "description": "Movimentação de esquiva, controle de distância e aplicação de contra-golpes."
     }
 ]
